@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Garage Detector</title>
+        <link rel="icon" href="img/favicon.ico" type="image/x-icon"/>
+
+        <script src="js/jquery-3.3.1.min.js"></script>
+        <script src="js/jquery-ui.min.js"></script>
+
+        <script>
+
+            class DataAPI{
+                constructor(type,async){
+                    this.type = type;
+                    this.async = async;
+                    this.datatype = "json";
+//                    this.headers = {"Authorization": "Basic " + btoa('mactrack' + ":" + 'mactrack')};
+                }
+                ajaxCall(){
+                    return $.ajax({
+                        type: this.type,
+                        url: this.url,
+                        dataType: this.datatype,
+                        async: this.async,
+                        headers: this.headers,
+                        error: function (e) {
+                            console.error("Error occured")
+                        },
+                        success: this.success
+                    })
+                }
+            }
+
+            $(function () {
+
+                var REFRESH_INTERVAL = 1000;
+                var STREAM_URL = "stream";
+                var NOSTREAM_URL = "img/nothing_detected.jpg"
+
+                var humanDetected = false;
+
+                function getStatus() {
+                    let path = "data/HumanStatus"
+                    let dataProvider = new DataAPI("GET",false);
+                    dataProvider.url = location.protocol + '//' + location.hostname + ":" + location.port + "/" +  path;
+                    dataProvider.success = function (data) {
+                        humanDetected = data.humanStatus
+
+                    };
+                    dataProvider.ajaxCall();
+                }
+
+                $(document).ready(function () {
+
+                    (window.setInterval(() => {
+                        getStatus();
+                        if (humanDetected){
+                            $("#image-display").prop("src", STREAM_URL)
+
+                            $('#label-status').text("HUMAN DETECTED");
+                            $('#label-status').css({"color": "red"});
+                        }
+                        else{
+                            $("#image-display").prop("src", NOSTREAM_URL)
+
+                            $('#label-status').text("HUMAN NOT DETECTED")
+                            $('#label-status').css({"color": "green"});
+
+                        }
+                        console.log("DEBUG: REFRESHED...", humanDetected);
+                    }, REFRESH_INTERVAL))();
+
+                });
+                    
+
+            })
+        </script>
+    </head>
+<body>
+    <div>
+        <h1>Raspberry Py Garage Detector</h1>
+    </div>
+    <div style="display: inline-block">
+        <h2 style="display: inline-block;">STATUS:</h2>
+        <h2 style="display: inline-block;" id="label-status">Human detected</h2>
+    </div>
+    <div>
+        <img id="image-display" style="height:480px;width:640px;" src=''/>
+    </div>
+
+    <!--<video controls autoplay width="640" height="480" src="http://localhost:8089/stream" controls>-->
+        <!--Your browser does not support the <code>video</code> element.-->
+    <!--</video>-->
+
+
+</body>
+
+</html>
