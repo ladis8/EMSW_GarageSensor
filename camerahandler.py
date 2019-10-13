@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import datetime
+import logging
 
 from imutils.object_detection import non_max_suppression
 from imutils import paths
@@ -11,7 +12,7 @@ import base64
 # TODO: place timestamp to right corner
 class CameraHandler:
     TEXT_POSITION = (50, 50)
-    SHOWING_IMAGE = True
+    SHOWING_IMAGE = False
 
     DEFAULT_FRAME_HEIGHT = 480
     DEFAULT_FRAME_WIDTH = 640
@@ -19,6 +20,7 @@ class CameraHandler:
     def __init__(self):
 
         self.camera = None
+        self.active = False
         self.frame_width = CameraHandler.DEFAULT_FRAME_WIDTH
         self.frame_height = CameraHandler.DEFAULT_FRAME_HEIGHT
 
@@ -43,10 +45,16 @@ class CameraHandler:
         self.saving = saving
 
     def start_camera(self):
-        self.camera = cv2.VideoCapture(0)
+        if not self.active:
+            self.camera = cv2.VideoCapture(0)
+            self.active = True
+        else:
+            logging.error("Camera has already been activated")
+
 
     def close_camera(self):
         self.camera.close()
+        self.active = False
 
 
     def _detect_human(self, frame):
@@ -85,6 +93,7 @@ class CameraHandler:
     def snap_frame(self):
 
         ret, frame = self.camera.read()
+        print("Snapping...")
         if not ret:
             raise Exception("Camera did not captured the image correctly...")
         # Our operations on the frame come here
@@ -113,13 +122,16 @@ class CameraHandler:
     def get_frame(self):
         return self.last_frame
 
-    def convert_to_image(self, frame):
+    def convert_to_image(self, frame, base64_encode=False):
 
         # tuple (85010, 1) ndarray --> data reduction
         img_buf_arr = cv2.imencode(".jpeg", frame)[1]
-        # img_data = "data:image/jpg;base64," + base64.b64encode(im_buf_arr)
-        return bytearray(img_buf_arr)
+        if base64_encode:
+            img_buf_arr = b"data:image/jpeg;base64," + base64.b64encode(img_buf_arr)
+            return img_buf_arr
+        return bytes(img_buf_arr)
         #  jpg_as_text = base64.b64encode(str(im_buf_arr))
         # self.camera.release()
         # return str(jpg_as_text)
+
 

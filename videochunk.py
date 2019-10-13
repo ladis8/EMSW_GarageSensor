@@ -29,7 +29,7 @@ class VideoChunk:
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         # self.video_out = cv2.VideoWriter('output.avi', fourcc, 20.0, (128, 128))
         #fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-        path = "{}/{}.".format(VideoChunk.OUTPUT_PATH_DIR, self.name)
+        path = "{}/{}.avi".format(VideoChunk.OUTPUT_PATH_DIR, self.name)
         #path = "output.avi"
         print(path)
         self.data = cv2.VideoWriter(path, fourcc, 20.0, (640, 480))

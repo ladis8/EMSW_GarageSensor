@@ -81,37 +81,43 @@ class FrontEnd:
 
 
     @cherrypy.expose
-    def stream(self, width='320', height='240', rate='30'):
+    def stream(self):
 
         cherrypy.response.headers['Content-Type'] = "multipart/x-mixed-replace;boundary=--frame"
-        imageInfo = {}
-        imageInfo['width'] = int(width)
-        imageInfo['height'] = int(height)
+        # imageInfo = {}
+        # imageInfo['width'] = int(width)
+        # imageInfo['height'] = int(height)
+        # rate = 30
 
-        rate = 30
         WebServer.streaming = True
-        return self.content(imageInfo, float(rate))
+        return self.content()
 
     stream._cp_config = {'response.stream': True}
 
     @cherrypy.expose
-    def snapshot(self, width=FRAME_WIDTH, height=FRAME_WIDTH):
-
-        self.web_server.camera_handler.set_frame_size(height, width)
-        img_data = self.web_server.camera_handler.snap_frame()
-
-        # if unsubscibe:
-        # self.subscribedTopics[imageInfoStr].stop()
-        # del self.subscribedTopics[imageInfoStr]
+    def snapshot(self):
 
         cherrypy.response.headers['Content-Type'] = 'image/jpeg'
-        cherrypy.response.headers['Content-Length'] = '%d' % (len(img_data))
-        cherrypy.response.headers['X-Timestamp'] = '%f' % (time.time())
 
+        print("SNAPSHOT CLICKED...")
+        # cherrypy.response.headers['X-Timestamp'] = '%f' % (time.time())
+
+        ch = self.web_server.camera_handler
+        #START CAMERA
+        if not self.web_server.camera_handler.active:
+            ch.start_camera()
+            ch.set_frame_size()
+        #SNAP A FRAME
+        ch.snap_frame()
+        frame = ch.get_frame()
+        #CONVERT FRAME TO IMAGE AND RETURN IT
+        img_data = ch.convert_to_image(frame, base64_encode=False)
+
+        cherrypy.response.headers['Content-Length'] = '%d' % (len(img_data))
         return img_data
 
 
-    def content(self, imageInfo, rate=30.0):
+    def content(self, rate=30.0):
 
         #imageInfoStr = json.dumps(imageInfo)
 

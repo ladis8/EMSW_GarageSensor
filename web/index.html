@@ -37,41 +37,77 @@
             $(function () {
 
                 var REFRESH_INTERVAL = 1000;
+                var refreshIntervalObject = null;
+
+                var SNAP_INTERVAL = 3000;
+                var snapIntervalObject = null;
+
                 var STREAM_URL = "stream";
                 var NOSTREAM_URL = "img/nothing_detected.jpg"
+                var SNAPSHOT_URL = "snapshot"
 
                 var humanDetected = false;
 
-                function getStatus() {
-                    let path = "data/HumanStatus"
-                    let dataProvider = new DataAPI("GET",false);
-                    dataProvider.url = location.protocol + '//' + location.hostname + ":" + location.port + "/" +  path;
-                    dataProvider.success = function (data) {
-                        humanDetected = data.humanStatus
 
-                    };
-                    dataProvider.ajaxCall();
+
+                function checkStatus() {
+
+                    function _getStatus() {
+                        let path = "data/HumanStatus"
+                        let dataProvider = new DataAPI("GET",false);
+                        dataProvider.url = location.protocol + '//' + location.hostname + ":" + location.port + "/" +  path;
+                        dataProvider.success = function (data) {
+                            humanDetected = data.humanStatus
+
+                        };
+                        dataProvider.ajaxCall();
+                    }
+
+                    _getStatus();
+                    if (humanDetected){
+                        $("#image-display").prop("src", STREAM_URL);
+                        $("#button-snapshot").prop("disabled", true);
+
+                        $('#label-status').text("HUMAN DETECTED");
+                        $('#label-status').css({"color": "red"});
+                    }
+                    else{
+                        $("#image-display").prop("src", NOSTREAM_URL);
+                        $("#button-snapshot").prop("disabled", false);
+
+                        $('#label-status').text("HUMAN NOT DETECTED");
+                        $('#label-status').css({"color": "green"});
+
+                    }
+                    console.log("DEBUG: REFRESHED...", humanDetected);
+                }
+
+                function refreshing() {
+                    refreshIntervalObject = window.setInterval(() => {
+                        checkStatus();
+                    }, REFRESH_INTERVAL);
+                    checkStatus();
                 }
 
                 $(document).ready(function () {
 
-                    (window.setInterval(() => {
-                        getStatus();
-                        if (humanDetected){
-                            $("#image-display").prop("src", STREAM_URL)
+                    refreshing();
 
-                            $('#label-status').text("HUMAN DETECTED");
-                            $('#label-status').css({"color": "red"});
+                    $('#button-snapshot').on('click', function () {
+
+                        $("#image-display").prop("src", SNAPSHOT_URL);
+
+                        window.clearInterval(refreshIntervalObject);
+                        if (snapIntervalObject !== null){
+                            window.clearInterval(snapIntervalObject);
                         }
-                        else{
-                            $("#image-display").prop("src", NOSTREAM_URL)
+                        console.log($('#image-display').prop("src"))
+                        snapIntervalObject = window.setTimeout(() => {
+                            refreshing();
+                           snapIntervalObject = null;
+                        }, SNAP_INTERVAL);
 
-                            $('#label-status').text("HUMAN NOT DETECTED")
-                            $('#label-status').css({"color": "green"});
-
-                        }
-                        console.log("DEBUG: REFRESHED...", humanDetected);
-                    }, REFRESH_INTERVAL))();
+                    })
 
                 });
                     
@@ -86,6 +122,7 @@
     <div style="display: inline-block">
         <h2 style="display: inline-block;">STATUS:</h2>
         <h2 style="display: inline-block;" id="label-status">Human detected</h2>
+        <button style="display: inline-block;" id="button-snapshot">SNAPSHOT</button>
     </div>
     <div>
         <img id="image-display" style="height:480px;width:640px;" src=''/>
