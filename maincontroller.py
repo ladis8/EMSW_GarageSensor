@@ -1,5 +1,6 @@
 import time
 import threading
+import logging
 import datetime as dt
 
 import tools
@@ -8,6 +9,8 @@ from videochunk import VideoChunk
 from rpiboard import RpiBoard
 
 class MainController():
+
+    SEND_EMAIL = True
 
     def __init__(self, ch, vh):
 
@@ -33,19 +36,19 @@ class MainController():
 
 
 
-    def __call__(self, param):
+    def __call__(self):
         print("Main controller notified...")
         #TODO: cases when notified when detected??
         self.STATE = "NOTIFIED" if not self.STATE == "DETECTED" else "DETECTED"
 
 
     def start(self):
-        print("Controller started...")
+        logging.info("Controller started...")
         self.is_running = True
         self.controller_thread.start()
 
     def stop(self):
-        print("Controller stopped...")
+        logging.info("Controller stopped...")
         self.is_running = False
         self.controller_thread.join(0.1)
 
@@ -57,7 +60,7 @@ class MainController():
         while self.is_running:
 
             date = dt.datetime.now().replace(microsecond=0)
-            print("INFO {}: Main controller is running...".format(date))
+            logging.debug("{}: Main controller is running...".format(date))
             if self.STATE == "UNNOTIFIED":
                 time.sleep(3)
 
@@ -68,18 +71,24 @@ class MainController():
 
                 self.camera_handler.snap_frame()
                 human_detected = self.camera_handler.check_human()
-                #TODO: logging???
 
-                #SEND NOTIFICATION
-                #tools.send_notification_email(str(date))
 
                 if not human_detected:
-                    print("EVENT {}: Motion sensor trigerred, human NOT detected".format(date))
+                    logging.warning("EVENT {}: Motion sensor trigerred, human NOT detected".format(date))
                     self.STATE = "UNNOTIFIED"
+                    self.camera_handler.close_camera()
+
                 else:
-                    print("EVENT {}: Motion sensor trigerred, human DETECTED".format(date))
+                    logging.warning("EVENT {}: Motion sensor trigerred, human DETECTED".format(date))
                     self.STATE = "DETECTED"
 
+                    #TURN ON LED
+                    self.rpi_board.set_led(True)
+
+
+                    #SEND NOTIFICATION
+                    if MainController.SEND_EMAIL:
+                        tools.send_notification_email(str(date))
 
                     #START RECORDING VIDEO
                     #TODO: implement video handelr - saving
@@ -90,16 +99,24 @@ class MainController():
 
 
             elif self.STATE == "DETECTED":
-                print("Getting frame...")
+                logging.debug("Getting frame...")
                 self.camera_handler.snap_frame()
                 frame = self.camera_handler.get_frame()
 
                 if new_video_chunk.is_within_timedelta(date):
                     new_video_chunk.add_frame_to_data(frame)
                 else:
-                    print("File saved...")
+                    logging.info("File {} saved...", new_video_chunk.name)
                     self.STATE = "UNNOTIFIED"
+
+                    #TURN OFF LED
+                    self.rpi_board.set_led(False)
+
+                    #SAVE VIDEO FILE
                     new_video_chunk.save()
+
+                    #CLOSE CAMERA
+                    self.camera_handler.close_camera()
 
             time.sleep(0.1)
 
