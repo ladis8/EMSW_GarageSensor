@@ -1,13 +1,8 @@
 import cherrypy
 import os
 import logging
-import time
 import json
 import datetime
-
-import camerahandler as ch
-import maincontroller as mc
-import videohandler as vh
 
 
 #WEB SERVER SETTINGS
@@ -18,7 +13,6 @@ MEDIA_DIR = os.path.join(os.path.abspath("."), u"web")
 FRAME_HEIGHT = 640
 FRAME_WIDTH = 480
 
-logging.getLogger().setLevel(logging.DEBUG)
 
 
 #TODO:
@@ -44,11 +38,10 @@ class Data:
 
     @cherrypy.config(**{'tools.json_in.force': False})
     def GET(self, **kwargs):
-        print("GET called...")
         cherrypy.response.headers['Content-Type'] = 'application/json'
         state = self.get_status_callback()
         date = datetime.datetime.now().replace(microsecond=0)
-        print("DEBUG: state asked", state)
+        logging.debug("GET called : state {} asked".format(state))
         return (json.dumps({"humanStatus": state, "timeStamp": str(date)})).encode()
 
 
@@ -99,16 +92,17 @@ class FrontEnd:
 
         cherrypy.response.headers['Content-Type'] = 'image/jpeg'
 
-        print("SNAPSHOT CLICKED...")
+        logging.debug("SNAPSHOT CLICKED...")
         # cherrypy.response.headers['X-Timestamp'] = '%f' % (time.time())
 
         ch = self.web_server.camera_handler
         #START CAMERA
-        if not self.web_server.camera_handler.active:
+        if not ch.active:
             ch.start_camera()
             ch.set_frame_size()
         #SNAP A FRAME
-        ch.snap_frame()
+        if not ch.saving:
+            ch.snap_frame()
         frame = ch.get_frame()
         #CONVERT FRAME TO IMAGE AND RETURN IT
         img_data = ch.convert_to_image(frame, base64_encode=False)
@@ -124,7 +118,7 @@ class FrontEnd:
         while WebServer.streaming:
 
             #TIME DELAY
-            time.sleep(0.1)
+            #time.sleep(0.1)
 
             frame = self.web_server.camera_handler.get_frame()
             if frame is None:
@@ -195,7 +189,14 @@ class WebServer(object):
         cherrypy.tree.mount(data, '/data', config=api_conf)
         cherrypy.tree.mount(FrontEnd(self), '/', config=app_conf)
 
-        cherrypy.log.error_log.setLevel(30)
+        cherrypy.log.error_log.setLevel(0)
+        cherrypy.log.error_log.propagate = False
+        cherrypy.log.access_log.propagate = False
+        logger = cherrypy.log.access_log
+        logger.removeHandler(logger.handlers[0])
+        cherrypy.log.screen = None
+        cherrypy.log.access_file = None
+
 
 
     # stops the web application
@@ -211,36 +212,4 @@ class WebServer(object):
 
 
 
-
-def main():
-
-    camera_handler = ch.CameraHandler()
-
-    video_handler = vh.VideoHandler()
-
-    server = controller = None
-
-    try:
-        logging.warning("Main controller starting...")
-        controller = mc.MainController(camera_handler, video_handler)
-        controller.start()
-
-        logging.warning("Server starting...")
-        server = WebServer(camera_handler, controller.get_detection_state)
-        server.start(ADDRESS, PORT)
-
-    except KeyboardInterrupt:
-        WebServer.streaming = False
-        camera_handler.close_camera()
-        if server:
-            server.stop()
-        if controller:
-            controller.stop()
-            controller.join()
-        logging.warning("Everything closed...")
-
-
-
-if __name__ == '__main__':
-    main()
 

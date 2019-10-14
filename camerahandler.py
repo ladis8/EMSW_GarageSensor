@@ -102,7 +102,7 @@ class CameraHandler:
         faces = self._detect_human(self.last_frame)
         return len(faces) != 0
 
-    def snap_frame(self):
+    def snap_frame(self,detect=True):
 
         logging.debug("Snapping...")
         if CameraHandler.RASPBERRY_PI:
@@ -122,10 +122,11 @@ class CameraHandler:
         date = datetime.datetime.now().replace(microsecond=0)
         cv2.putText(grey, str(date), CameraHandler.TEXT_POSITION, cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
 
-        detected_faces = self._detect_human(grey)
+        if detect:
+            detected_faces = self._detect_human(grey)
 
-        for (x, y, w, h) in detected_faces:
-            cv2.rectangle(grey, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            for (x, y, w, h) in detected_faces:
+                cv2.rectangle(grey, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
         # Render iamge
         if CameraHandler.SHOWING_IMAGE:

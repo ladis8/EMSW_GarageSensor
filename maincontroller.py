@@ -13,8 +13,9 @@ class MainController():
     SEND_EMAIL = True
 
     def __init__(self, ch, vh):
+        self.lock = threading.Lock()
 
-        self.STATE = "NOTIFIED"
+        self.STATE = "UNNOTIFIED"
         self.rpi_board = None
 
         #ASSIGN HANDLERS
@@ -27,20 +28,24 @@ class MainController():
 
         #ASSIGN EVENT LISTENER
         self.rpi_board = RpiBoard()
-        self.rpi_board.add_observer(self)
+        self.register_as_observer()
 
-        #activate artificial timer
-        # t = threading.Timer(5.0, )
-
-
-
-
+    #OBSERVER PATTERN METHODS
 
     def __call__(self):
-        print("Main controller notified...")
-        #TODO: cases when notified when detected??
-        self.STATE = "NOTIFIED" if not self.STATE == "DETECTED" else "DETECTED"
+        self.update()
 
+    def register_as_observer(self):
+        self.rpi_board.add_observer(self)
+
+    def update(self):
+        logging.debug("Main controller notified...")
+        #TODO: cases when notified when detected??
+        self.lock.acquire()
+        self.STATE = "NOTIFIED" if not self.STATE == "DETECTED" else "DETECTED"
+        self.lock.release()
+
+    #THREAD METHODS
 
     def start(self):
         logging.info("Controller started...")
@@ -49,6 +54,7 @@ class MainController():
 
     def stop(self):
         logging.info("Controller stopped...")
+        self.rpi_board.clear()
         self.is_running = False
         self.controller_thread.join(0.1)
 
@@ -61,10 +67,13 @@ class MainController():
 
             date = dt.datetime.now().replace(microsecond=0)
             logging.debug("{}: Main controller is running...".format(date))
-            if self.STATE == "UNNOTIFIED":
+            self.lock.acquire()
+            state = self.STATE
+            self.lock.release()
+            if state == "UNNOTIFIED":
                 time.sleep(3)
 
-            elif self.STATE == "NOTIFIED":
+            elif state == "NOTIFIED":
                 #TURN ON THE CAMERA AND SNAP THE IMAGE
                 self.camera_handler.start_camera()
                 self.camera_handler.set_frame_size()
@@ -85,7 +94,6 @@ class MainController():
                     #TURN ON LED
                     self.rpi_board.set_led(True)
 
-
                     #SEND NOTIFICATION
                     if MainController.SEND_EMAIL:
                         tools.send_notification_email(str(date))
@@ -98,15 +106,15 @@ class MainController():
                     self.camera_handler.set_saving(True)
 
 
-            elif self.STATE == "DETECTED":
+            elif state == "DETECTED":
                 logging.debug("Getting frame...")
-                self.camera_handler.snap_frame()
+                self.camera_handler.snap_frame(detect=False)
                 frame = self.camera_handler.get_frame()
 
                 if new_video_chunk.is_within_timedelta(date):
                     new_video_chunk.add_frame_to_data(frame)
                 else:
-                    logging.info("File {} saved...", new_video_chunk.name)
+                    logging.info("File {} saved...".format(new_video_chunk.name))
                     self.STATE = "UNNOTIFIED"
 
                     #TURN OFF LED
@@ -114,6 +122,7 @@ class MainController():
 
                     #SAVE VIDEO FILE
                     new_video_chunk.save()
+                    self.camera_handler.set_saving(False)
 
                     #CLOSE CAMERA
                     self.camera_handler.close_camera()

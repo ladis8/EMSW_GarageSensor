@@ -1,6 +1,6 @@
-
 import RPi.GPIO as GPIO
 import logging
+import time
 
 class RpiBoard:
 
@@ -15,25 +15,23 @@ class RpiBoard:
         GPIO.setup(RpiBoard.SENSOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
         GPIO.setup(RpiBoard.LED_PIN, GPIO.OUT, initial=GPIO.LOW)
         GPIO.add_event_detect(RpiBoard.SENSOR_PIN, GPIO.FALLING, callback=self._motion_detected, bouncetime=500)  # button 3
+        while True:
+            self.set_led(False)
+            #time.sleep(0.5)
 
     def set_led(self, state):
         GPIO.output(RpiBoard.LED_PIN, state)
 
 
     def _motion_detected(self, channel):
-        logging.debug("Button {} triggered...".format(channel))
+        print("Button {} triggered...".format(channel))
+        self.set_led(True)
+        time.sleep(0.5)
+
         #assure that video is not streamed
-        self._notify_observers()
-
-    def _notify_observers(self):
-        for observer in self._observers:
-            observer()
-
-    def add_observer(self, observer):
-        self._observers.append(observer)
-
-    def clear(self):
-        GPIO.cleanup()
-
+try:
+    rpi = RpiBoard()
+except KeyboardInterrupt:
+    GPIO.cleanup()
 
 

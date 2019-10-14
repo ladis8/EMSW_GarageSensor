@@ -117,13 +117,18 @@
     </head>
 <body>
     <div>
-        <h1>Raspberry Py Garage Detector</h1>
+        <h1>Raspberry Pi Garage Detector</h1>
     </div>
     <div style="display: inline-block">
         <h2 style="display: inline-block;">STATUS:</h2>
         <h2 style="display: inline-block;" id="label-status">Human detected</h2>
-        <button style="display: inline-block;" id="button-snapshot">SNAPSHOT</button>
     </div>
+    <div style="margin: 20px;padding: 20px">
+        <button style="display: inline-block;" id="button-snapshot">SNAPSHOT</button>
+        <input type="file" class="form-control" id="input-file" name="file"/>
+
+    </div>
+
     <div>
         <img id="image-display" style="height:480px;width:640px;" src=''/>
     </div>
