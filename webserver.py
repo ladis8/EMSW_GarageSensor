@@ -1,3 +1,10 @@
+"""
+\file       webserver.py
+\author     Ladislav Stefka
+\brief      Classes and methods for deploying web pages and handling requests from browser 
+\copyright  none
+"""
+
 import cherrypy
 import os
 import logging
@@ -10,31 +17,22 @@ ADDRESS = "0.0.0.0"
 PORT = 8089
 MEDIA_DIR = os.path.join(os.path.abspath("."), u"web")
 
-FRAME_HEIGHT = 640
-FRAME_WIDTH = 480
-
-
-
-#TODO:
-#       1) test timer callback
-#       2) human detection
-#       3) email send
-#       4) video ???
-
 
 class Root:
-    _CONNECTION_STRING = ""
+    """Class representing API that can be requested by GET"""
+
+    @cherrypy.config(**{'tools.auth_basic.on': False})
+    def OPTIONS(self,**kwargs):
+        pass
 
 class Data:
+    """Class representing API that can be requested by GET"""
 
     exposed = True
 
     def __init__(self, get_status_method):
         self.get_status_callback = get_status_method
 
-    @cherrypy.config(**{'tools.auth_basic.on': False})
-    def OPTIONS(self,**kwargs):
-        pass
 
     @cherrypy.config(**{'tools.json_in.force': False})
     def GET(self, **kwargs):
@@ -46,49 +44,31 @@ class Data:
 
 
 
-class FrontEnd:
+class WebPage:
+    """Class representing the web app domain"""
 
     def __init__(self, ws):
         self.web_server = ws
 
     @cherrypy.expose
     def app(self):
+        """Main app domain, deploys the index.html web page."""
+
         cherrypy.response.headers['Content-Type'] = "text/html"
         logging.debug("MEDIA directory folder: %s", MEDIA_DIR)
         return open(os.path.join(MEDIA_DIR, u'index.html'))
 
     @cherrypy.expose
     def index(self):
+        """Index domain, tests the cherrypy functionality."""
+
         cherrypy.response.headers['Content-Type'] = "text/html"
         return "Cherrypy index page call"
 
 
-    # @cherrypy.expose
-    # def humanstatus(self):
-    #     cherrypy.response.headers['Content-Type'] = 'application/json'
-    #     state = self.get_status_callback()
-    #     date = datetime.datetime.now().replace(microsecond=0)
-    #     print("DEBUG: state asked", state)
-    #     return json.load({"humanStatus": state, "timeStamp": date})
-
-
-
-    @cherrypy.expose
-    def stream(self):
-
-        cherrypy.response.headers['Content-Type'] = "multipart/x-mixed-replace;boundary=--frame"
-        # imageInfo = {}
-        # imageInfo['width'] = int(width)
-        # imageInfo['height'] = int(height)
-        # rate = 30
-
-        WebServer.streaming = True
-        return self.content()
-
-    stream._cp_config = {'response.stream': True}
-
     @cherrypy.expose
     def snapshot(self):
+        """One frame snapshot, tests the camera functionality."""
 
         cherrypy.response.headers['Content-Type'] = 'image/jpeg'
 
@@ -110,30 +90,35 @@ class FrontEnd:
         cherrypy.response.headers['Content-Length'] = '%d' % (len(img_data))
         return img_data
 
+    @cherrypy.expose
+    def stream(self):
+        """MJPEG stream that periodically sends camera capture to web."""
 
-    def content(self, rate=30.0):
+        cherrypy.response.headers['Content-Type'] = "multipart/x-mixed-replace;boundary=--frame"
+        WebServer.streaming = True
+        return self.content()
 
-        #imageInfoStr = json.dumps(imageInfo)
+    stream._cp_config = {'response.stream': True}
+
+
+    def content(self):
 
         while WebServer.streaming:
 
             #TIME DELAY
             #time.sleep(0.1)
-
             frame = self.web_server.camera_handler.get_frame()
             if frame is None:
                 continue
-
             img_data = self.web_server.camera_handler.convert_to_image(frame)
 
-            #print("Image streamed...")
-
-            # stream = b"--frame\r\n" + ,"utf-8") + img_data + bytes("\r\n--frame\n\r","utf-8")
+            #YIELDING THE MJPEG FRAME
             yield (b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + img_data + b"\r\n")
-            # yield stream
 
 
 class WebServer(object):
+
+    """Class that represents the web server """
 
     streaming = False
 
@@ -146,6 +131,7 @@ class WebServer(object):
 
     def __init__(self, ch, get_status_method):
         self.camera_handler = ch
+
 
 
         api_conf = {
@@ -179,19 +165,15 @@ class WebServer(object):
             },
         }
 
-
+        #MOUNT
         data = Root()
         data.exposed = True
         data.HumanStatus = Data(get_status_method)
-
-
         cherrypy.tools.cors = cherrypy.Tool('before_finalize', WebServer.cors)
         cherrypy.tree.mount(data, '/data', config=api_conf)
-        cherrypy.tree.mount(FrontEnd(self), '/', config=app_conf)
+        cherrypy.tree.mount(WebPage(self), '/', config=app_conf)
 
-        cherrypy.log.error_log.setLevel(0)
-        cherrypy.log.error_log.propagate = False
-        cherrypy.log.access_log.propagate = False
+        #DISABLE CHERRYPY LOG
         logger = cherrypy.log.access_log
         logger.removeHandler(logger.handlers[0])
         cherrypy.log.screen = None
@@ -199,8 +181,8 @@ class WebServer(object):
 
 
 
-    # stops the web application
     def start(self,address, port=8080):
+
         cherrypy.config.update({
             'server.socket_host': address,
             'server.socket_port': port

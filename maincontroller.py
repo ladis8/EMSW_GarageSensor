@@ -1,14 +1,24 @@
+"""
+\file       maincontroller.py
+\author     Ladislav Stefka
+\brief      Main controller - thread that handles the logic of programme and manipulates with camera and video
+\copyright  none
+"""
+
 import time
 import threading
 import logging
 import datetime as dt
 
 import tools
-
 from videochunk import VideoChunk
-from rpiboard import RpiBoard
+from rpiboard import RPiBoard
 
-class MainController():
+
+class MainController:
+    """Class that represent the main controller - it has its own thread and state 
+    that can be either UNNOTIFIED/NOTIFIED/DETECTED (see state diagram)
+    Main controller also manipulates with the camera handler and video handler"""
 
     SEND_EMAIL = True
 
@@ -27,7 +37,7 @@ class MainController():
         self.is_running = False
 
         #ASSIGN EVENT LISTENER
-        self.rpi_board = RpiBoard()
+        self.rpi_board = RPiBoard()
         self.register_as_observer()
 
     #OBSERVER PATTERN METHODS
@@ -54,10 +64,9 @@ class MainController():
 
     def stop(self):
         logging.info("Controller stopped...")
-        self.rpi_board.clear()
+        self.rpi_board.clear_GPIO()
         self.is_running = False
         self.controller_thread.join(0.1)
-
 
     def worker(self):
 
@@ -92,7 +101,7 @@ class MainController():
                     self.STATE = "DETECTED"
 
                     #TURN ON LED
-                    self.rpi_board.set_led(True)
+                    self.rpi_board.set_LED(True)
 
                     #SEND NOTIFICATION
                     if MainController.SEND_EMAIL:
@@ -100,9 +109,10 @@ class MainController():
 
                     #START RECORDING VIDEO
                     #TODO: implement video handelr - saving
+                    #TODO: this should be implemented in video handler
                     new_video_chunk = VideoChunk()
                     new_video_chunk.set_start_time(date)
-                    new_video_chunk.set_recording()
+                    new_video_chunk.set_chunk_saving()
                     self.camera_handler.set_saving(True)
 
 
@@ -118,17 +128,17 @@ class MainController():
                     self.STATE = "UNNOTIFIED"
 
                     #TURN OFF LED
-                    self.rpi_board.set_led(False)
+                    self.rpi_board.set_LED(False)
 
                     #SAVE VIDEO FILE
-                    new_video_chunk.save()
+                    new_video_chunk.save_video_chunk()
                     self.camera_handler.set_saving(False)
 
                     #CLOSE CAMERA
                     self.camera_handler.close_camera()
 
+            #SLEEP OF THE MAIN LOOP
             time.sleep(0.1)
-
 
     def get_detection_state(self):
         return self.STATE == "DETECTED"

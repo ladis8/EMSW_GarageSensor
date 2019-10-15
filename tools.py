@@ -1,6 +1,13 @@
+"""
+\file       tools.py
+\author     Jake Hunt 
+\brief      A variety of functions used for different purposes - sending email,...  
+\copyright  none
+
+"""
+
 import smtplib, ssl
 import logging
-
 
 PORT = 587  # For SSL
 SENDER_ADDRESS = "ense810Project@gmail.com"
@@ -12,8 +19,6 @@ RECEIVER_ADDRESS = ["stefka885@gmail.com"]
 def send_notification_email(date):
 
     context = ssl.create_default_context()
-
-
 
     with smtplib.SMTP("smtp.gmail.com", PORT) as server:
         server.ehlo()  # Can be omitted

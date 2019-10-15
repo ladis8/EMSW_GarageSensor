@@ -1,8 +1,15 @@
+"""
+\file       rpiboard.py
+\author     Jake Hunt 
+\brief      RPiBoard represents the physical board
+            - handles the GPIO pins and notifies the main controller when the motion event is triggered
+\copyright  none
+"""
 
 import RPi.GPIO as GPIO
 import logging
 
-class RpiBoard:
+class RPiBoard:
 
     SENSOR_PIN = 17
     LED_PIN = 21
@@ -10,19 +17,20 @@ class RpiBoard:
     def __init__(self):
         self._observers = []
 
-        #SET UP MOTION SENSOR AS INPUT
         GPIO.setmode(GPIO.BCM)
-        GPIO.setup(RpiBoard.SENSOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-        GPIO.setup(RpiBoard.LED_PIN, GPIO.OUT, initial=GPIO.LOW)
-        GPIO.add_event_detect(RpiBoard.SENSOR_PIN, GPIO.FALLING, callback=self._motion_detected, bouncetime=500)  # button 3
+        #SET UP MOTION SENSOR AS INPUT
+        GPIO.setup(RPiBoard.SENSOR_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        #SET UP LED AS OUTPUT
+        GPIO.setup(RPiBoard.LED_PIN, GPIO.OUT, initial=GPIO.LOW)
+        #ASSIGN A CALLBACK ON MOTION SENSOR EDGE
+        GPIO.add_event_detect(RPiBoard.SENSOR_PIN, GPIO.FALLING, callback=self._motion_detected, bouncetime=500)  # button 3
 
-    def set_led(self, state):
-        GPIO.output(RpiBoard.LED_PIN, state)
-
+    def set_LED(self, state):
+        GPIO.output(RPiBoard.LED_PIN, state)
 
     def _motion_detected(self, channel):
         logging.debug("Button {} triggered...".format(channel))
-        #assure that video is not streamed
+        #TODO: assure that video is not streamed
         self._notify_observers()
 
     def _notify_observers(self):
@@ -32,7 +40,7 @@ class RpiBoard:
     def add_observer(self, observer):
         self._observers.append(observer)
 
-    def clear(self):
+    def clear_GPIO(self):
         GPIO.cleanup()
 
 

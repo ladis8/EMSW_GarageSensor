@@ -12,12 +12,14 @@
 
         <script>
 
+            /**
+             * Function that creates asynchronous ajax call to server api specified by URL
+             */
             class DataAPI{
                 constructor(type,async){
                     this.type = type;
                     this.async = async;
                     this.datatype = "json";
-//                    this.headers = {"Authorization": "Basic " + btoa('mactrack' + ":" + 'mactrack')};
                 }
                 ajaxCall(){
                     return $.ajax({
@@ -82,6 +84,9 @@
                     console.log("DEBUG: REFRESHED...", humanDetected);
                 }
 
+                /**
+                 * Function that periodically refresh the human detection status and changes the GUI appropriately
+                 */
                 function refreshing() {
                     refreshIntervalObject = window.setInterval(() => {
                         checkStatus();

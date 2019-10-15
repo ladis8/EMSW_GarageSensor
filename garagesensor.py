@@ -1,3 +1,10 @@
+"""
+\file       garagesensor.py
+\author     Ladislav Stefka 
+\brief      Main script that runs when program is launched - starts web server and main controller, sets logging level 
+\copyright  none
+"""
+
 
 import logging
 
@@ -33,8 +40,6 @@ def main():
             controller.stop()
             controller.join()
         logging.warning("Everything closed...")
-
-
 
 if __name__ == '__main__':
     main()
